@@ -324,17 +324,26 @@ def _restart_solver(reason: str) -> bool:
     """Restart the solver process."""
     _log(f"[restart] attempting restart: {reason}")
 
-    # Try systemd first
+    # Always kill stale processes first to avoid orphan accumulation
+    _kill_stale_processes()
+
+    # Try systemd first (timeout=120 because TimeoutStopSec=90 in the unit)
     if _is_service_active() or _service_exists():
         try:
             subprocess.run(
                 ["systemctl", "restart", SOLVER_SERVICE],
-                capture_output=True, timeout=30,
+                capture_output=True, timeout=120,
             )
-            time.sleep(5)
+            time.sleep(10)
             if _is_solver_running():
                 _log("[restart] systemd restart succeeded")
                 return True
+            else:
+                _log("[restart] systemd restart returned but solver not running yet, waiting...")
+                time.sleep(15)
+                if _is_solver_running():
+                    _log("[restart] systemd restart succeeded (delayed)")
+                    return True
         except Exception as e:
             _log(f"[restart] systemd restart failed: {e}")
 
@@ -350,7 +359,7 @@ def _restart_solver(reason: str) -> bool:
             cwd=str(APP_DIR),
             start_new_session=True,
         )
-        time.sleep(10)
+        time.sleep(15)
         alive = _is_solver_running()
         if alive:
             _log("[restart] manual restart succeeded")
@@ -501,7 +510,7 @@ def main() -> None:
     state.setdefault("total_failed", 0)
     state.setdefault("total_restarts", 0)
     state.setdefault("last_alert_signature", "")
-    state.setdefault("last_status_report_epoch", 0)
+    state.setdefault("last_status_report_epoch", time.time())
     state.setdefault("last_cleanup_epoch", 0)
     state.setdefault("last_restart_epoch", 0)
     state.setdefault("last_log_mtime", 0.0)

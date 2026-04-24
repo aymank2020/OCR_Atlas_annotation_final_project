@@ -102,4 +102,9 @@ echo "[solver] starting solver at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo "[solver] config: $CONFIG"
 echo "[solver] log: $LOG_FILE"
 
-exec "$PYTHON_BIN" -u atlas_web_auto_solver.py --config "$CONFIG" --execute 2>&1 | tee -a "$LOG_FILE"
+# Run solver as a regular command (not exec) so the cleanup trap fires on exit.
+# Direct append to LOG_FILE instead of tee; systemd captures stdout to journal.
+"$PYTHON_BIN" -u atlas_web_auto_solver.py --config "$CONFIG" --execute >> "$LOG_FILE" 2>&1
+EXIT_CODE=$?
+echo "[solver] solver exited with code $EXIT_CODE at $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$LOG_FILE"
+exit $EXIT_CODE

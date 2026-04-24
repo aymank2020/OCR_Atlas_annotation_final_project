@@ -13,19 +13,20 @@ RestartSec=20
 TimeoutStopSec=90
 KillSignal=SIGINT
 FinalKillSignal=SIGKILL
-KillMode=process
+# control-group ensures all children (Chrome, Xvfb, VNC) are killed on stop/restart
+KillMode=control-group
 
 # Environment
 Environment=DISPLAY=:99
 Environment=NODE_OPTIONS=--no-warnings
 EnvironmentFile=-/srv/atlas/OCR_Atlas_annotation_final_project/.env
 
-# Resource limits
+# Resource limits - Chrome spawns many subprocesses, needs higher TasksMax
 MemoryMax=12G
-TasksMax=256
+TasksMax=512
 
-# Logging - run_solver.sh uses tee to write to solver_service.log
-# so we send stdout/stderr to journal to avoid double-writing
+# Logging - run_solver.sh appends directly to solver_service.log
+# journal captures the pre-solver startup messages from the bash script
 StandardOutput=journal
 StandardError=journal
 

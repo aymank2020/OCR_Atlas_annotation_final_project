@@ -18,9 +18,10 @@ EnvironmentFile=-/srv/atlas/OCR_Atlas_annotation_final_project/.env
 MemoryMax=256M
 TasksMax=32
 
-# Logging
-StandardOutput=append:/srv/atlas/OCR_Atlas_annotation_final_project/outputs/monitor_daemon.log
-StandardError=append:/srv/atlas/OCR_Atlas_annotation_final_project/outputs/monitor_daemon.log
+# Logging - monitor_daemon.py writes its own log file via _log()
+# journal captures only for systemd status inspection
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
