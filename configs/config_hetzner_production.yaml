@@ -282,7 +282,7 @@ gemini:
   chat_web_preserve_existing_thread_across_episodes: false
   chat_web_clean_thread_per_episode: true
   chat_web_clean_thread_per_request: false
-  chat_web_require_authenticated_session: true
+  chat_web_require_authenticated_session: false
   chat_web_chunk_thread_reset_after_n_chunks: 8
   chat_web_channel: "chrome"
   chat_web_storage_state: ".state/gemini_chat_storage_state_danatimer.json"
@@ -307,8 +307,8 @@ gemini:
   chat_web_pre_send_ready_timeout_sec: 30.0
   chat_web_pre_send_settle_sec: 4.0
   chat_web_ui_model_mode: "pro"
-  chat_web_allowed_model_modes: ["pro", "thinking"]
-  chat_web_enforce_model_mode: true
+  chat_web_allowed_model_modes: ["pro", "thinking", "fast"]
+  chat_web_enforce_model_mode: false
   chat_web_model_mode_settle_sec: 1.0
   chat_web_response_stall_sec_fast: 35.0
   chat_web_response_stall_sec_pro: 75.0
