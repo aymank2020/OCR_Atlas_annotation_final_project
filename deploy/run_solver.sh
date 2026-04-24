@@ -102,4 +102,4 @@ echo "[solver] starting solver at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo "[solver] config: $CONFIG"
 echo "[solver] log: $LOG_FILE"
 
-exec "$PYTHON_BIN" -u atlas_web_auto_solver.py --config "$CONFIG" 2>&1 | tee -a "$LOG_FILE"
+exec "$PYTHON_BIN" -u atlas_web_auto_solver.py --config "$CONFIG" --execute 2>&1 | tee -a "$LOG_FILE"
