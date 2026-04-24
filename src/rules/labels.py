@@ -613,6 +613,8 @@ def _build_auto_continuity_merge_operations(
     if len(ordered) < min_run:
         return []
 
+    max_merges = max(0, int(_cfg_get(cfg, "run.auto_continuity_merge_max_ops", 6)))
+
     def same_goal(idx_a: int, idx_b: int) -> bool:
         label_a = str(segment_plan.get(idx_a, {}).get("label", "")).strip()
         label_b = str(segment_plan.get(idx_b, {}).get("label", "")).strip()
@@ -620,8 +622,10 @@ def _build_auto_continuity_merge_operations(
         key_b = _label_goal_key(label_b)
         if not key_a or not key_b or key_a != key_b:
             return False
-        overlap = len(_label_content_tokens(label_a).intersection(_label_content_tokens(label_b)))
-        return overlap >= min_overlap
+        # Exclude the shared goal verb from overlap so min_overlap is meaningful
+        shared_tokens = _label_content_tokens(label_a).intersection(_label_content_tokens(label_b))
+        shared_tokens.discard(key_a)
+        return len(shared_tokens) >= min_overlap
 
     max_combined_duration_sec = max(
         0.0,
@@ -654,6 +658,12 @@ def _build_auto_continuity_merge_operations(
         for idx in range(end_idx, start_idx, -1):
             merge_indices.append(idx)
     merge_indices = sorted(set(merge_indices), reverse=True)
+    if max_merges and len(merge_indices) > max_merges:
+        print(
+            f"[policy] continuity merge capped: {len(merge_indices)} -> {max_merges} "
+            f"(run.auto_continuity_merge_max_ops)"
+        )
+        merge_indices = merge_indices[:max_merges]
     return [{"action": "merge", "segment_index": int(idx)} for idx in merge_indices]
 
 
