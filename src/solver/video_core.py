@@ -1010,6 +1010,102 @@ def _maybe_optimize_video_for_upload(video_file: Path, cfg: Dict[str, Any]) -> P
     return out_file
 
 
+def _prepare_repair_video_clip(
+    video_file: Path,
+    segments: List[Dict[str, Any]],
+    target_indices: List[int],
+    out_dir: Path,
+    episode_id: str = "",
+    *,
+    pad_sec: float = 2.0,
+    cdp_max_mb: float = 45.0,
+    ffmpeg_bin: Optional[str] = None,
+) -> Optional[Path]:
+    """Create a time-windowed video clip scoped to the overlong segments for repair.
+
+    Returns the path to a small clip that covers the overlong segments (plus
+    padding), suitable for uploading via CDP where the 50 MB limit applies.
+    Falls back to the ``_upload_opt`` file when clipping is not possible.
+    Returns ``None`` only when no usable file can be produced.
+    """
+    if video_file is None or not video_file.exists():
+        return None
+    if not target_indices or not segments:
+        return None
+
+    target_set = set(int(idx) for idx in target_indices)
+    matched = [
+        seg for seg in segments
+        if int(seg.get("segment_index", 0) or 0) in target_set
+    ]
+    if not matched:
+        return None
+
+    window_start = max(
+        0.0,
+        min(_safe_float(seg.get("start_sec"), 0.0) for seg in matched) - pad_sec,
+    )
+    window_end = (
+        max(_safe_float(seg.get("end_sec"), 0.0) for seg in matched) + pad_sec
+    )
+    if window_end <= window_start:
+        window_end = window_start + 1.0
+
+    # Prefer the optimized upload video as the source (smaller, faster clip).
+    opt_path = video_file.with_name(video_file.stem + "_upload_opt.mp4")
+    src = opt_path if (opt_path.exists() and opt_path.stat().st_size > 0) else video_file
+
+    token = str(episode_id or "unknown").strip()[-24:] or "unknown"
+    clip_name = f"video_{token}_repair_clip.mp4"
+    clip_path = out_dir / clip_name
+
+    clipped = _extract_video_window(
+        src_video=src,
+        out_video=clip_path,
+        start_sec=window_start,
+        end_sec=window_end,
+        ffmpeg_bin=ffmpeg_bin,
+    )
+    if clipped and clip_path.exists() and clip_path.stat().st_size > 0:
+        clip_mb = clip_path.stat().st_size / (1024 * 1024)
+        if clip_mb <= cdp_max_mb:
+            print(
+                f"[video] repair clip ready: {clip_path.name} "
+                f"({clip_mb:.1f} MB, window={window_start:.1f}-{window_end:.1f}s, "
+                f"targets={sorted(target_set)})"
+            )
+            return clip_path
+        # Clip too large -- clean up and fall through to _upload_opt.
+        try:
+            clip_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Fall back to _upload_opt if it exists and is small enough.
+    if opt_path.exists():
+        opt_mb = opt_path.stat().st_size / (1024 * 1024)
+        if opt_mb <= cdp_max_mb:
+            print(
+                f"[video] repair clip fallback to optimized upload: "
+                f"{opt_path.name} ({opt_mb:.1f} MB)"
+            )
+            return opt_path
+
+    # Last resort: original video only if small enough.
+    try:
+        orig_mb = video_file.stat().st_size / (1024 * 1024)
+        if orig_mb <= cdp_max_mb:
+            return video_file
+    except Exception:
+        pass
+
+    print(
+        "[video] repair clip: no file small enough for CDP transfer "
+        f"(limit={cdp_max_mb:.0f} MB)"
+    )
+    return None
+
+
 __all__ = [
     "_looks_like_video_url",
     "_is_probably_mp4",
@@ -1029,4 +1125,5 @@ __all__ = [
     "_transcode_video_ffmpeg",
     "_transcode_video_cv2",
     "_maybe_optimize_video_for_upload",
+    "_prepare_repair_video_clip",
 ]

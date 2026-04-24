@@ -99,8 +99,57 @@
 
 # BEGIN_DISCORD_LIVE_UPDATES
 # AUTO-GENERATED FROM DISCORD UPDATES
-# generated_at: 2026-04-08T16:18:06.408285
-# source_messages: 0
+# generated_at: 2026-04-24T16:30:00
+# source_messages: 102608
+# harvest_window: 2026-03-27 to 2026-04-24
 
-- No new actionable policy updates detected in this cycle.
+## DISCORD RULE UPDATES (March 27 - April 24, 2026)
+
+### Segmenting Update (sentientcake, 2026-03-27) [OFFICIAL]
+- Max segment duration: 10 seconds (CONFIRMED STILL ACTIVE as of 2026-04-14)
+- Sweet spot: 2-5 seconds
+- Dense labeling preferred: "we want as much granularity as possible"
+- Label all actions and pauses within each segment
+- No penalties for past work before this change
+
+### Hold Rule Enforcement (jujumu007 + austin._._0, 2026-03-27)
+- "hold" is REQUIRED when ego holds an object NOT referenced elsewhere in the label
+- Example: ego holds wrench + picks up cup -> "pick up cup, hold wrench"
+- "pick up cup" does NOT need "hold cup" (redundant)
+- Each segment is independent: next segment doesn't know previous context
+- Exception: when pick up and place happen in ~1 second, can combine
+
+### Atomic Action Limit (m.xssx, 2026-03-28)
+- Max 2 atomic actions per segment
+- More than 2 actions -> MUST split
+- Separate actions with comma, NOT "and"
+
+### Dense-First Mandate (austin._._0 + m.xssx, multiple dates)
+- Dense is "the best now" and "safer"
+- "Please, go dense. Split on any hand disengagement."
+- Coarse only when: segment too short to split, or action is continuous/repetitive
+- Do NOT mix dense and coarse in one label (hold + coarse move = mixing)
+
+### Place Location Mandatory (jujumu007, 2026-03-31)
+- "place" MUST always include location
+- "You will be penalized if you do not say what location something was placed on"
+
+### Intent Prohibition (m.xssx, 2026-03-29)
+- Do NOT add "to" showing what ego wants to do next
+- WRONG: "pick up shirt to fold" or "dip knife in water to rinse"
+- Label every micro action separately
+
+### Format Rules (austin._._0, 2026-03-27)
+- No articles (a, the) in labels
+- Always name the object explicitly (never use "it")
+- Maintain adjective and noun consistency throughout episode
+- Do not summarize: label every distinct action
+
+### No Action Clarification (_josephgreenwood, 2026-03-28)
+- Hands in contact with task-relevant object = NEVER "No Action"
+
+### Quality Standards
+- Use PC, not mobile phone (austin._._0, 2026-04-11)
+- Below 50% accuracy score = bad (m.xssx, 2026-04-07)
+- Anti-spamming: low quality submissions = account action (juphams, 2026-04-04)
 # END_DISCORD_LIVE_UPDATES

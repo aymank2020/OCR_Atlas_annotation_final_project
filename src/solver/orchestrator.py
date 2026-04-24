@@ -165,12 +165,19 @@ def _maybe_retry_policy_with_stronger_model(
             "[policy] validation failed; retrying Gemini with stronger model "
             f"({current_model} -> {policy_retry_model})..."
         )
+    # Prefer the optimized upload video so uploads stay under the
+    # CDP 50 MB transfer limit on remote-browser setups.
+    _retry_video = video_file
+    if video_file is not None:
+        _opt = video_file.with_name(video_file.stem + "_upload_opt.mp4")
+        if _opt.exists() and _opt.stat().st_size > 0:
+            _retry_video = _opt
     try:
         retry_payload = legacy._request_labels_with_optional_segment_chunking(
             cfg,
             segments,
             prompt,
-            video_file,
+            _retry_video,
             allow_operations=False,
             model_override=policy_retry_model,
             task_id=task_id,
@@ -570,6 +577,30 @@ def _maybe_repair_overlong_segments(
         if not overlong_indices:
             break
 
+        # Prepare a scoped repair video clip covering only the overlong
+        # segments so uploads stay under the CDP 50 MB transfer limit.
+        from src.solver.video_core import _prepare_repair_video_clip as _make_repair_clip
+
+        _repair_out_dir = Path(str(_cfg_get(cfg, "run.output_dir", "outputs")))
+        _repair_episode_id = str(task_id).replace("episode_", "") if task_id else ""
+        effective_repair_video = video_file
+        if video_file is not None:
+            _repair_clip = _make_repair_clip(
+                video_file=video_file,
+                segments=current_segments,
+                target_indices=list(overlong_indices),
+                out_dir=_repair_out_dir,
+                episode_id=_repair_episode_id,
+                pad_sec=max(0.0, float(
+                    _cfg_get(cfg, "run.repair_clip_pad_sec", 2.0) or 2.0
+                )),
+                cdp_max_mb=max(1.0, float(
+                    _cfg_get(cfg, "run.repair_clip_cdp_max_mb", 45.0) or 45.0
+                )),
+            )
+            if _repair_clip is not None:
+                effective_repair_video = _repair_clip
+
         chat_only_mode = bool(_cfg_get(cfg, "run.chat_only_mode", False))
         if chat_only_mode:
             retry_stage = "targeted_repair_1" if round_no == 1 else "targeted_repair_2"
@@ -649,7 +680,7 @@ def _maybe_repair_overlong_segments(
                     cache_dir=cache_dir,
                     episode_id=episode_id,
                     model=repair_stage_model,
-                    video_file=video_file,
+                    video_file=effective_repair_video,
                     allow_merge=False,
                     prompt_scope="chat_ops",
                     heartbeat=_heartbeat,
@@ -771,7 +802,7 @@ def _maybe_repair_overlong_segments(
                     cfg,
                     current_segments,
                     current_prompt,
-                    video_file,
+                    effective_repair_video,
                     allow_operations=False,
                     task_id=task_id,
                     task_state=task_state,
@@ -1001,7 +1032,7 @@ def _maybe_repair_overlong_segments(
                 cfg,
                 current_segments,
                 current_prompt,
-                video_file,
+                effective_repair_video,
                 allow_operations=False,
                 task_id=task_id,
                 task_state=task_state,
@@ -1614,12 +1645,21 @@ def _process_policy_gate_and_compare(
                         allow_operations=False,
                         policy_trigger="policy_conflict",
                     )
+                    # Use optimized upload video for post-compare re-query
+                    # to stay under CDP 50 MB transfer limit.
+                    _compare_repair_video = video_file
+                    if video_file is not None:
+                        _opt = video_file.with_name(
+                            video_file.stem + "_upload_opt.mp4"
+                        )
+                        if _opt.exists() and _opt.stat().st_size > 0:
+                            _compare_repair_video = _opt
                     labels_payload = (
                         legacy._request_labels_with_optional_segment_chunking(
                             cfg,
                             segments,
                             prompt,
-                            video_file,
+                            _compare_repair_video,
                             allow_operations=False,
                             task_id=task_id,
                             task_state=task_state,
