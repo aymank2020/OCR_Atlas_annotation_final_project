@@ -24,9 +24,10 @@ EnvironmentFile=-/srv/atlas/OCR_Atlas_annotation_final_project/.env
 MemoryMax=12G
 TasksMax=256
 
-# Logging
-StandardOutput=append:/srv/atlas/OCR_Atlas_annotation_final_project/outputs/solver_service.log
-StandardError=append:/srv/atlas/OCR_Atlas_annotation_final_project/outputs/solver_service.log
+# Logging - run_solver.sh uses tee to write to solver_service.log
+# so we send stdout/stderr to journal to avoid double-writing
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
