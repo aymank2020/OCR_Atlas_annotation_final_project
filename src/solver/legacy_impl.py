@@ -5264,10 +5264,8 @@ def _apply_global_run_policy(cfg: Dict[str, Any]) -> None:
     run["keep_alive_idle_cycle_pause_sec"] = 5.0
     run["release_all_wait_sec"] = 5.0
 
-    # Merge must stay enabled for continuity fixes to work.
-    if not bool(run.get("structural_allow_merge", True)):
-        run["structural_allow_merge"] = True
-        print("[policy] run.structural_allow_merge forced ON for continuity safety.")
+    # Respect explicit structural_allow_merge=false from config.
+    # Auto-continuity merge has its own enable flag now.
 
 
 _read_optional_text_file = _prompting._read_optional_text_file

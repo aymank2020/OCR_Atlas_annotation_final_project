@@ -155,6 +155,7 @@ run:
   max_structural_operations: 12
   structural_allow_split: true
   structural_allow_merge: false
+  auto_continuity_merge_enabled: false
   structural_skip_if_segments_ge: 0
   structural_max_failures_per_episode: 4
   structural_wait_rows_delta_timeout_ms: 1800
