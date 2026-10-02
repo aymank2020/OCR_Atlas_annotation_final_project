@@ -2611,15 +2611,19 @@ def _is_authenticated_gemini_chat_page(page: Any) -> bool:
 
 def _pick_existing_gemini_chat_page(context: Any, *, chat_url: str) -> Optional[Any]:
     target = str(chat_url or "").strip()
+    dedicated = _is_dedicated_gemini_chat_url(target)
+    target_chat = target.split("?", 1)[0].split("#", 1)[0].rstrip("/")
     fallback = None
     authenticated_fallback = None
     try:
         for candidate in reversed(list(getattr(context, "pages", []) or [])):
             current_url = str(getattr(candidate, "url", "") or "").strip()
             authenticated = _is_authenticated_gemini_chat_page(candidate)
-            if target and current_url.startswith(target) and authenticated:
+            current_chat = current_url.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+            matches = bool(target) and (current_chat == target_chat if dedicated else current_url.startswith(target))
+            if matches and authenticated:
                 return candidate
-            if target and current_url.startswith(target) and fallback is None:
+            if matches and fallback is None:
                 fallback = candidate
             if "gemini.google.com" in current_url and authenticated and authenticated_fallback is None:
                 authenticated_fallback = candidate
@@ -2627,6 +2631,8 @@ def _pick_existing_gemini_chat_page(context: Any, *, chat_url: str) -> Optional[
                 fallback = candidate
     except Exception:
         return None
+    if _is_dedicated_gemini_chat_url(target):
+        return fallback
     if authenticated_fallback is not None:
         return authenticated_fallback
     return fallback
@@ -4123,10 +4129,8 @@ def _send_chat_prompt(
         _restore_prompt_if_missing()
         return False
 
-    # Try Enter on the composer FIRST – Gemini's contenteditable composer
-    # dispatches the message on plain Enter and this avoids click-target issues
-    # with the Send button on the landing page.
-    if not sent:
+    # Prefer the visible send button; Enter remains a fallback when it is absent.
+    if not sent and _get_send_button() is None:
         try:
             _send_attempt_counter += 1
             print(f"[trace] send attempt #{_send_attempt_counter} (enter_first): trying Enter on chat_box", flush=True)
